@@ -2,160 +2,220 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>マスターナンバー 最適解アシスタント</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マスターナンバー 最適解（完全Knuth版）</title>
+
 <style>
-body{
-  font-family:system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background:#0f1115;
-  color:#f1f1f1;
-  margin:0;
+:root{
+  --bg:#0f1115;
+  --card:#1b1e26;
+  --accent:#4c7dff;
 }
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:var(--bg);
+  color:#f1f1f1;
+}
+
 .container{
   max-width:480px;
-  margin:0 auto;
-  padding:16px 14px 24px;
+  margin:auto;
+  padding:16px;
 }
+
+.card{
+  background:var(--card);
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+}
+
 h1{
   text-align:center;
-  font-size:22px;
-  margin:12px 0 16px
+  font-size:20px;
+  margin-bottom:16px;
 }
+
 label{
   font-size:13px;
-  opacity:.8
+  opacity:.8;
 }
+
 input,select,button{
-  padding:12px;
-  margin:6px 0;
   width:100%;
-  font-size:16px;
-  border-radius:10px;
+  padding:14px;
+  margin-top:6px;
+  font-size:18px;
+  border-radius:12px;
   border:none;
 }
+
 input,select{
-  background:#1b1e26;
+  background:#0f1115;
   color:#fff;
 }
+
+input[type="number"]{
+  text-align:center;
+}
+
 button{
-  cursor:pointer;
-  background:#4c7dff;
+  margin-top:12px;
+  background:var(--accent);
   color:#fff;
-  font-weight:600;
+  font-weight:700;
 }
+
 button.secondary{
-  background:#3a3d46;
+  background:#444;
 }
+
 .row{
   display:flex;
   gap:8px;
 }
-.row input{
-  flex:1;
+
+@media(max-width:600px){
+  .row{flex-direction:column}
 }
+
 .log{
-  background:#1b1e26;
-  padding:12px;
-  border-radius:10px;
-  max-height:30vh;
-  overflow:auto;
-  font-size:14px;
-  margin-top:10px;
-  line-height:1.6;
-}
-.result{
   margin-top:14px;
-  font-size:20px;
-  text-align:center;
-  font-weight:700;
+  background:#0f1115;
+  padding:12px;
+  border-radius:12px;
+  max-height:200px;
+  overflow:auto;
+  font-size:15px;
 }
-@media (min-width:600px){
-  .container{padding:24px}
+
+.result{
+  position:sticky;
+  bottom:0;
+  margin-top:14px;
+  padding:14px;
+  background:#11131a;
+  border-radius:12px;
+  font-size:18px;
+  font-weight:700;
+  text-align:center;
+  border:1px solid #2a2d3a;
 }
 </style>
 </head>
+
 <body>
 <div class="container">
-<h1>マスターナンバー 最適解</h1>
+  <div class="card">
+    <h1>マスターナンバー 最適解</h1>
 
-<label>桁数</label>
-<select id="digits" onchange="resetAll()">
-  <option value="3" selected>3 桁</option>
-  <option value="4">4 桁</option>
-  <option value="5">5 桁</option>
-</select>
+    <label>桁数</label>
+    <select id="digits" onchange="resetAll()">
+      <option value="3" selected>3 桁</option>
+      <option value="4">4 桁</option>
+      <option value="5">5 桁</option>
+    </select>
 
-<label>入力</label>
-<input id="guess" placeholder="数字">
-<div class="row">
-  <input id="h" type="number" placeholder="H">
-  <input id="b" type="number" placeholder="B">
-</div>
+    <label>入力した数字</label>
+    <input id="guess" inputmode="numeric" pattern="[0-9]*" placeholder="例：123">
 
-<button onclick="addLog()">追加</button>
-<button class="secondary" onclick="resetAll()">リセット</button>
+    <div class="row">
+      <input id="h" type="number" inputmode="numeric" placeholder="H">
+      <input id="b" type="number" inputmode="numeric" placeholder="B">
+    </div>
 
-<div class="log" id="log"></div>
-<div class="result" id="next"></div>
+    <button onclick="addLog()">追加</button>
+    <button class="secondary" onclick="resetAll()">リセット</button>
+
+    <div class="log" id="log"></div>
+    <div class="result" id="next"></div>
+  </div>
 </div>
 
 <script>
-let logs = [];
-let candidates = [];
+let logs=[], candidates=[], allNumbers=[];
 
 function initCandidates(){
-  candidates = [];
-  const d = Number(document.getElementById('digits').value);
-  const max = Math.pow(10,d);
+  candidates=[];
+  allNumbers=[];
+  const d=Number(digits.value);
+  const max=10**d;
   for(let i=0;i<max;i++){
     let s=i.toString().padStart(d,'0');
-    if(new Set(s).size===d) candidates.push(s);
+    if(new Set(s).size===d){
+      candidates.push(s);
+      allNumbers.push(s);
+    }
   }
 }
-initCandidates();
 
-function check(guess, target){
+function check(g,t){
   let H=0,B=0;
-  for(let i=0;i<guess.length;i++){
-    if(guess[i]===target[i]) H++;
-    else if(target.includes(guess[i])) B++;
+  for(let i=0;i<g.length;i++){
+    if(g[i]===t[i]) H++;
+    else if(t.includes(g[i])) B++;
   }
   return {H,B};
 }
 
 function addLog(){
-  const g=document.getElementById('guess').value;
-  const H=Number(document.getElementById('h').value);
-  const B=Number(document.getElementById('b').value);
-  const d = Number(document.getElementById('digits').value);
-  if(g.length!==d) return alert('桁数が違います');
-  logs.push({g,H,B});
-  filter();
-  render();
-}
+  const g=guess.value;
+  const H=Number(h.value);
+  const B=Number(b.value);
+  const d=Number(digits.value);
 
-function filter(){
-  candidates = candidates.filter(c=>{
-    return logs.every(l=>{
+  if(g.length!==d) return alert("桁数が違います");
+
+  logs.push({g,H,B});
+  candidates=candidates.filter(c=>
+    logs.every(l=>{
       const r=check(l.g,c);
       return r.H===l.H && r.B===l.B;
-    });
-  });
+    })
+  );
+
+  render();
+  guess.value=h.value=b.value="";
+}
+
+function bestGuess(){
+  let best=null,bestScore=Infinity;
+  for(let g of allNumbers){
+    let map={};
+    for(let t of candidates){
+      const r=check(g,t);
+      const k=r.H+"-"+r.B;
+      map[k]=(map[k]||0)+1;
+    }
+    const worst=Math.max(...Object.values(map));
+    if(worst<bestScore||(worst===bestScore&&candidates.includes(g))){
+      bestScore=worst;
+      best=g;
+    }
+  }
+  return best;
 }
 
 function render(){
-  const logDiv=document.getElementById('log');
-  logDiv.innerHTML=logs.map(l=>`${l.g} → H${l.H} B${l.B}`).join('<br>');
-  const next=document.getElementById('next');
-  if(candidates.length===0) next.textContent='矛盾しています';
-  else next.textContent=`次の候補: ${candidates[0]}（残り ${candidates.length}）`;
+  log.innerHTML=logs.map(l=>`${l.g} → H${l.H} B${l.B}`).join("<br>");
+  if(candidates.length===0) next.textContent="矛盾しています";
+  else if(candidates.length===1) next.textContent=`確定：${candidates[0]}`;
+  else next.textContent=`最適手：${bestGuess()}（残り ${candidates.length}）`;
 }
 
 function resetAll(){
   logs=[];
   initCandidates();
-  document.getElementById('log').innerHTML='';
-  document.getElementById('next').innerHTML='';
+  log.innerHTML="";
+  next.innerHTML="";
+  guess.value=h.value=b.value="";
 }
+
+initCandidates();
 </script>
 </body>
 </html>
