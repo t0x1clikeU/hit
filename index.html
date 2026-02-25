@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>マスターナンバー 最適解アシスタント</title>
+<style>
+body{
+  font-family:system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background:#0f1115;
+  color:#f1f1f1;
+  margin:0;
+}
+.container{
+  max-width:480px;
+  margin:0 auto;
+  padding:16px 14px 24px;
+}
+h1{
+  text-align:center;
+  font-size:22px;
+  margin:12px 0 16px
+}
+label{
+  font-size:13px;
+  opacity:.8
+}
+input,select,button{
+  padding:12px;
+  margin:6px 0;
+  width:100%;
+  font-size:16px;
+  border-radius:10px;
+  border:none;
+}
+input,select{
+  background:#1b1e26;
+  color:#fff;
+}
+button{
+  cursor:pointer;
+  background:#4c7dff;
+  color:#fff;
+  font-weight:600;
+}
+button.secondary{
+  background:#3a3d46;
+}
+.row{
+  display:flex;
+  gap:8px;
+}
+.row input{
+  flex:1;
+}
+.log{
+  background:#1b1e26;
+  padding:12px;
+  border-radius:10px;
+  max-height:30vh;
+  overflow:auto;
+  font-size:14px;
+  margin-top:10px;
+  line-height:1.6;
+}
+.result{
+  margin-top:14px;
+  font-size:20px;
+  text-align:center;
+  font-weight:700;
+}
+@media (min-width:600px){
+  .container{padding:24px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<h1>マスターナンバー 最適解</h1>
+
+<label>桁数</label>
+<select id="digits" onchange="resetAll()">
+  <option value="3" selected>3 桁</option>
+  <option value="4">4 桁</option>
+  <option value="5">5 桁</option>
+</select>
+
+<label>入力</label>
+<input id="guess" placeholder="数字">
+<div class="row">
+  <input id="h" type="number" placeholder="H">
+  <input id="b" type="number" placeholder="B">
+</div>
+
+<button onclick="addLog()">追加</button>
+<button class="secondary" onclick="resetAll()">リセット</button>
+
+<div class="log" id="log"></div>
+<div class="result" id="next"></div>
+</div>
+
+<script>
+let logs = [];
+let candidates = [];
+
+function initCandidates(){
+  candidates = [];
+  const d = Number(document.getElementById('digits').value);
+  const max = Math.pow(10,d);
+  for(let i=0;i<max;i++){
+    let s=i.toString().padStart(d,'0');
+    if(new Set(s).size===d) candidates.push(s);
+  }
+}
+initCandidates();
+
+function check(guess, target){
+  let H=0,B=0;
+  for(let i=0;i<guess.length;i++){
+    if(guess[i]===target[i]) H++;
+    else if(target.includes(guess[i])) B++;
+  }
+  return {H,B};
+}
+
+function addLog(){
+  const g=document.getElementById('guess').value;
+  const H=Number(document.getElementById('h').value);
+  const B=Number(document.getElementById('b').value);
+  const d = Number(document.getElementById('digits').value);
+  if(g.length!==d) return alert('桁数が違います');
+  logs.push({g,H,B});
+  filter();
+  render();
+}
+
+function filter(){
+  candidates = candidates.filter(c=>{
+    return logs.every(l=>{
+      const r=check(l.g,c);
+      return r.H===l.H && r.B===l.B;
+    });
+  });
+}
+
+function render(){
+  const logDiv=document.getElementById('log');
+  logDiv.innerHTML=logs.map(l=>`${l.g} → H${l.H} B${l.B}`).join('<br>');
+  const next=document.getElementById('next');
+  if(candidates.length===0) next.textContent='矛盾しています';
+  else next.textContent=`次の候補: ${candidates[0]}（残り ${candidates.length}）`;
+}
+
+function resetAll(){
+  logs=[];
+  initCandidates();
+  document.getElementById('log').innerHTML='';
+  document.getElementById('next').innerHTML='';
+}
+</script>
+</body>
+</html>
